@@ -9,6 +9,7 @@ app.use(express.json());
 
 const provider = new ethers.providers.JsonRpcProvider(process.env.RPC_URL);
 const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
+const defaultTopUpAmount = process.env.DEFAULT_TOPUP_BNB || '0.0001';
 
 app.post('/send-bnb', async (req, res) => {
   const { recipient, amount } = req.body;
@@ -17,10 +18,18 @@ app.post('/send-bnb', async (req, res) => {
     return res.status(400).json({ error: "Invalid recipient address" });
   }
 
+  const amountAsString = String(
+    amount === undefined || amount === null || amount === '' ? defaultTopUpAmount : amount
+  ).trim();
+
+  if (Number.isNaN(Number(amountAsString)) || Number(amountAsString) <= 0) {
+    return res.status(400).json({ error: "Amount must be a positive number" });
+  }
+
   try {
     const tx = await wallet.sendTransaction({
       to: recipient,
-      value: ethers.utils.parseEther(amount),
+      value: ethers.utils.parseEther(amountAsString),
     });
 
     await tx.wait();
